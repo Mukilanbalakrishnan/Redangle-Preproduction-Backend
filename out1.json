@@ -1,0 +1,29 @@
+[
+  {
+    "table_schema": "public",
+    "constraint_name": "creative_confirmations_external_lead_id_fkey",
+    "table_name": "creative_confirmations",
+    "column_name": "external_lead_id",
+    "foreign_table_schema": "public",
+    "foreign_table_name": "external_leads",
+    "foreign_column_name": "external_id"
+  },
+  {
+    "table_schema": "public",
+    "constraint_name": "lead_current_stage_external_lead_id_fkey",
+    "table_name": "lead_current_stage",
+    "column_name": "external_lead_id",
+    "foreign_table_schema": "public",
+    "foreign_table_name": "external_leads",
+    "foreign_column_name": "external_id"
+  },
+  {
+    "table_schema": "public",
+    "constraint_name": "lead_stage_tracking_external_lead_id_fkey",
+    "table_name": "lead_stage_tracking",
+    "column_name": "external_lead_id",
+    "foreign_table_schema": "public",
+    "foreign_table_name": "external_leads",
+    "foreign_column_name": "external_id"
+  }
+]

@@ -1,0 +1,78 @@
+[
+  {
+    "column_name": "id",
+    "data_type": "integer"
+  },
+  {
+    "column_name": "employee_id",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "first_name",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "last_name",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "email",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "contact_number",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "dob",
+    "data_type": "date"
+  },
+  {
+    "column_name": "address",
+    "data_type": "text"
+  },
+  {
+    "column_name": "work_location",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "role",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "experience",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "date_of_join",
+    "data_type": "date"
+  },
+  {
+    "column_name": "description",
+    "data_type": "text"
+  },
+  {
+    "column_name": "created_by",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "profile_image",
+    "data_type": "text"
+  },
+  {
+    "column_name": "identity_document",
+    "data_type": "text"
+  },
+  {
+    "column_name": "status",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "employee_code",
+    "data_type": "character varying"
+  }
+]
