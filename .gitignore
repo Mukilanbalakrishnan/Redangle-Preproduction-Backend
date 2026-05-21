@@ -1,26 +1,68 @@
-# Dependencies
+# =========================
+# Node.js Dependencies
+# =========================
 node_modules/
 
-# Environment variables
+# =========================
+# Environment Variables
+# =========================
 .env
-.env.local
-.env.development
-.env.test
-.env.production
+.env.*
+!.env.example
 
-# Build files
-dist/
-build/
-
+# =========================
 # Logs
-logs
+# =========================
+logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
 
-# OS files
+# =========================
+# Build / Output
+# =========================
+dist/
+build/
+coverage/
+
+# =========================
+# Cache Files
+# =========================
+.cache/
+.tmp/
+temp/
+
+# =========================
+# Prisma (optional)
+# =========================
+prisma/dev.db
+prisma/dev.db-journal
+
+# =========================
+# OS Files
+# =========================
 .DS_Store
 Thumbs.db
 
-# IDE files
+# =========================
+# IDE / Editor
+# =========================
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# =========================
+# Runtime files
+# =========================
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# =========================
+# Optional (uncomment if needed)
+# =========================
+# package-lock.json
+# yarn.lock
