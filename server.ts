@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+
 import cors from "cors";
 import dotenv from "dotenv";
 
@@ -7,6 +8,12 @@ import dashboardRoutes from "./src/routes/dashboard.routes";
 import { startLeadSyncJob } from "./src/scheduler/leadSync.scheduler";
 import emailRoutes from "./src/routes/email.routes";
 import eventDetails from "./src/routes/eventDetails.routes";
+import creativeConfirmationRoutes
+  from "./src/routes/creativeConfirmation.routes";
+import stageRoutes
+  from "./src/routes/stageTracking.routes";
+import creativePlanningRoutes
+  from "./src/routes/creativePlanning.routes";
 import creativeConfirmationRoutes from "./src/routes/creativeConfirmation.routes";
 import stageRoutes from "./src/routes/stageTracking.routes";
 import creativePlanningRoutes from "./src/routes/creativePlanning.routes";
@@ -19,6 +26,7 @@ import projectRoutes from "./src/routes/project.routes";
 import eventCoordinatorRoutes from "./src/routes/eventCoordinator.routes";
 import workTrackingRoutes from "./src/routes/workTracking.route";
 import externalLeadRoutes from "./src/routes/externalLead.routes";
+
 import employeeDashboardRoutes from "./src/routes/employee.routes";
 import notificationRoutes from "./src/routes/notification.routes";
 import crmRoutes from "./src/routes/crm.routes";
@@ -28,6 +36,9 @@ import adminRoutes from "./src/routes/admin.routes";
 import userRolesRoutes from "./src/routes/userRoles.routes";
 import masterAdminRoutes from "./src/routes/masterAdmin.routes";
 import { ensurePasswordResetTable } from "./src/queries/passwordReset.query";
+
+// Load environment variables
+import dotenv from "dotenv";
 import { initializeDatabase } from "./src/config/initDb";
 
 // Load environment variables
@@ -85,6 +96,7 @@ app.use("/api/pixoffice", pixofficeRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin", userRolesRoutes);
 app.use("/api/master-admin", masterAdminRoutes);
+
 
 // ================= ERROR HANDLER =================
 
