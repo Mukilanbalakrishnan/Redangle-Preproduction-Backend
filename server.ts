@@ -2,6 +2,8 @@ import express from "express";
 import path from "path";
 
 import cors from "cors";
+import dotenv from "dotenv";
+
 import dashboardRoutes from "./src/routes/dashboard.routes";
 import { startLeadSyncJob } from "./src/scheduler/leadSync.scheduler";
 import emailRoutes from "./src/routes/email.routes";
@@ -12,6 +14,9 @@ import stageRoutes
   from "./src/routes/stageTracking.routes";
 import creativePlanningRoutes
   from "./src/routes/creativePlanning.routes";
+import creativeConfirmationRoutes from "./src/routes/creativeConfirmation.routes";
+import stageRoutes from "./src/routes/stageTracking.routes";
+import creativePlanningRoutes from "./src/routes/creativePlanning.routes";
 import assignTeamRoutes from "./src/routes/assignTeam.route";
 import employeeRoutes from "./src/routes/employee.route";
 import authRoutes from "./src/routes/auth.routes";
@@ -34,6 +39,9 @@ import { ensurePasswordResetTable } from "./src/queries/passwordReset.query";
 
 // Load environment variables
 import dotenv from "dotenv";
+import { initializeDatabase } from "./src/config/initDb";
+
+// Load environment variables
 const result = dotenv.config();
 console.log("ENV LOAD RESULT:", result);
 
@@ -108,6 +116,11 @@ const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, async () => {
   console.log(`✅ Server running on port ${PORT}`);
+  try {
+    await initializeDatabase();
+  } catch (dbErr: any) {
+    console.error("❌ Critical database initialization failure:", dbErr.message);
+  }
   startLeadSyncJob();
   await ensurePasswordResetTable();
   console.log("✅ Password reset OTP table ready");
