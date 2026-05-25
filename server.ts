@@ -8,12 +8,6 @@ import dashboardRoutes from "./src/routes/dashboard.routes";
 import { startLeadSyncJob } from "./src/scheduler/leadSync.scheduler";
 import emailRoutes from "./src/routes/email.routes";
 import eventDetails from "./src/routes/eventDetails.routes";
-import creativeConfirmationRoutes
-  from "./src/routes/creativeConfirmation.routes";
-import stageRoutes
-  from "./src/routes/stageTracking.routes";
-import creativePlanningRoutes
-  from "./src/routes/creativePlanning.routes";
 import creativeConfirmationRoutes from "./src/routes/creativeConfirmation.routes";
 import stageRoutes from "./src/routes/stageTracking.routes";
 import creativePlanningRoutes from "./src/routes/creativePlanning.routes";
@@ -37,8 +31,6 @@ import userRolesRoutes from "./src/routes/userRoles.routes";
 import masterAdminRoutes from "./src/routes/masterAdmin.routes";
 import { ensurePasswordResetTable } from "./src/queries/passwordReset.query";
 
-// Load environment variables
-import dotenv from "dotenv";
 import { initializeDatabase } from "./src/config/initDb";
 
 // Load environment variables
