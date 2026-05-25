@@ -5,6 +5,23 @@ import { ensureAssignTeamColumnsQuery } from "./assignTeam.query";
 export const getIncomingDataQuery = async () => {
   await ensureEventUploadColumnsQuery();
   await ensureAssignTeamColumnsQuery();
+  // Ensure client_deliveries table exists so the query doesn't fail
+  await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_deliveries (
+          id SERIAL PRIMARY KEY,
+          lead_id INTEGER NOT NULL,
+          delivery_type VARCHAR(50) NOT NULL,
+          drive_link TEXT,
+          video_drive_link TEXT,
+          drone_photo_drive_link TEXT,
+          drone_video_drive_link TEXT,
+          status VARCHAR(50) NOT NULL DEFAULT 'pending',
+          notes TEXT,
+          query_count INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+  `);
+
   // Fetch events where at least one media upload exists
   const query = `
       SELECT
@@ -58,7 +75,26 @@ export const getIncomingDataQuery = async () => {
         el.phone,
         el.email,
         el.location,
-        el.lead_serial_number
+        el.lead_serial_number,
+        (
+          SELECT status FROM client_deliveries cdx
+          WHERE (
+              cdx.lead_id::text = el.external_id::text 
+              OR cdx.lead_id::text = el.lead_serial_number 
+              OR cdx.lead_id::text = ed.external_lead_id
+              OR cdx.lead_id = COALESCE(
+                  CAST(NULLIF(SUBSTRING(el.lead_serial_number FROM '\\d+$'), '') AS INTEGER),
+                  CAST(NULLIF(SUBSTRING(el.external_id::text FROM '\\d+$'), '') AS INTEGER),
+                  CAST(NULLIF(SUBSTRING(ed.external_lead_id FROM '\\d+$'), '') AS INTEGER),
+                  CASE WHEN el.external_id::text ~ '^\\d+$' THEN CAST(el.external_id::text AS INTEGER) ELSE NULL END,
+                  CASE WHEN ed.external_lead_id ~ '^\\d+$' THEN CAST(ed.external_lead_id AS INTEGER) ELSE NULL END,
+                  0
+              )
+          )
+          AND cdx.delivery_type IN ('RAW_DATA', 'EVENT_RAW_DATA')
+          ORDER BY cdx.created_at DESC
+          LIMIT 1
+        ) AS client_delivery_status
       FROM event_details ed
       LEFT JOIN external_leads el
         ON ed.external_lead_id = el.external_id::text
