@@ -183,6 +183,64 @@ const roleAssignmentsLateral = `
                     WHEN COALESCE(ed.drone_photo_drive_link, '') != '' OR COALESCE(ed.drone_video_drive_link, '') != '' THEN 'Submitted'
                     ELSE NULL
                 END
+            ),
+            (
+                COALESCE(
+                    (
+                        SELECT 'additional-staff' || CASE
+                            WHEN split_part(staff_entry, '::', 2) != ''
+                            THEN '-' || regexp_replace(lower(split_part(staff_entry, '::', 2)), '[^a-z0-9]+', '-', 'g')
+                            ELSE ''
+                        END
+                        FROM jsonb_array_elements_text(
+                            CASE WHEN COALESCE(el.current_phase, '') = 'event'
+                                 THEN COALESCE(at.event_additional_staff, '[]'::jsonb)
+                                 ELSE COALESCE(at.additional_staff, '[]'::jsonb)
+                            END
+                        ) AS staff_entry
+                        WHERE staff_entry LIKE ANY (
+                            SELECT v || '::%' FROM unnest($1::text[]) AS v
+                        )
+                        LIMIT 1
+                    ),
+                    'additional-staff'
+                ),
+                COALESCE(
+                    (
+                        SELECT 'Additional Staff - ' || split_part(staff_entry, '::', 2)
+                        FROM jsonb_array_elements_text(
+                            CASE WHEN COALESCE(el.current_phase, '') = 'event'
+                                 THEN COALESCE(at.event_additional_staff, '[]'::jsonb)
+                                 ELSE COALESCE(at.additional_staff, '[]'::jsonb)
+                            END
+                        ) AS staff_entry
+                        WHERE staff_entry LIKE ANY (
+                            SELECT v || '::%' FROM unnest($1::text[]) AS v
+                        )
+                        LIMIT 1
+                    ),
+                    'Additional Staff'
+                ),
+                CASE WHEN COALESCE(el.current_phase, '') = 'pre_production' THEN 'Pre-production' ELSE 'Event' END,
+                CASE WHEN COALESCE(el.current_phase, '') = 'pre_production' THEN 'Pre-production Coordinator' ELSE 'Event Coordinator' END,
+                CASE WHEN COALESCE(el.current_phase, '') = 'pre_production'
+                     THEN 'Pre-production -> Pre-production Coordinator -> Additional Staff'
+                     ELSE 'Event -> Event Coordinator -> Additional Staff' END,
+                EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements_text(
+                        CASE WHEN COALESCE(el.current_phase, '') = 'event'
+                             THEN COALESCE(at.event_additional_staff, '[]'::jsonb)
+                             ELSE COALESCE(at.additional_staff, '[]'::jsonb)
+                        END
+                    ) AS staff_entry
+                    WHERE staff_entry LIKE ANY (
+                        SELECT v || '::%' FROM unnest($1::text[]) AS v
+                    )
+                ),
+                NULL,
+                NULL,
+                NULL
             )
     ) AS role_assignment(task_key, task_name, flow_stage, request_source, stage_path, is_assigned, upload_link, upload_notes, status)
 `;

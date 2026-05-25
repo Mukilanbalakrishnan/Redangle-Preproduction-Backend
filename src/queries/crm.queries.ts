@@ -292,8 +292,10 @@ export const getRawDataDeliverySummaryQuery = async (leadId: string | number) =>
             `,
             [row.external_id, row.lead_serial_number]
         );
-        salesRow = salesResult.rows[0] || {};
-    } else {
+        salesRow = salesResult.rows[0];
+    }
+
+    if (!salesRow || !salesRow.sales_lead_id) {
         const fallbackLeadId = getFallbackLeadId(row);
         const deliveryResult = await deliveryStore.db.query(
             `
@@ -429,7 +431,7 @@ export const getFinalDeliverySummaryQuery = async (projectId: string) => {
 
     const deliveryStore = await getDeliveryStore(lead);
     await ensureClientDeliveriesQuery(deliveryStore.db, deliveryStore.hasLeadsDetail);
-    const storeLead = await getStoreLeadRow(deliveryStore, lead);
+    let storeLead = await getStoreLeadRow(deliveryStore, lead);
 
     const linksResult = await pool.query(
         `SELECT *
@@ -443,7 +445,17 @@ export const getFinalDeliverySummaryQuery = async (projectId: string) => {
     const videoLink = links.find((link: any) => isVideoProjectType(link.project_type))?.upload_link || null;
 
     let deliveryRow: any = {};
-    if (storeLead?.sales_lead_id) {
+    let salesLeadId = storeLead?.sales_lead_id;
+
+    if (!salesLeadId) {
+        salesLeadId = getFallbackLeadId(lead);
+        storeLead = {
+            sales_lead_id: salesLeadId,
+            sales_lead_serial_number: lead.lead_serial_number || lead.external_id,
+        };
+    }
+
+    if (salesLeadId) {
         const deliveryResult = await deliveryStore.db.query(
             `SELECT id AS client_delivery_id,
                     delivery_type AS client_delivery_type,
@@ -453,7 +465,7 @@ export const getFinalDeliverySummaryQuery = async (projectId: string) => {
              WHERE lead_id = $1 AND delivery_type = 'FINAL_DELIVERABLES'
              ORDER BY created_at DESC
              LIMIT 1`,
-            [storeLead.sales_lead_id]
+            [salesLeadId]
         );
         deliveryRow = deliveryResult.rows[0] || {};
     }
