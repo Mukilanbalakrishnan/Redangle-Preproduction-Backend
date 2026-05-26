@@ -1,4 +1,5 @@
-import { getIncomingDataQuery, updateMediaStatusQuery, upsertHardDiskClosureQuery, getHardDiskClosureQuery, getHardDiskStatsQuery, updateIncomingDataQuery, deleteIncomingDataQuery, markHardDiskReceivedQuery } from "../queries/dataManager.query";
+import { getIncomingDataQuery, updateMediaStatusQuery, upsertHardDiskClosureQuery, getHardDiskClosureQuery, getHardDiskStatsQuery, updateIncomingDataQuery, deleteIncomingDataQuery, markHardDiskReceivedQuery, updateReuploadRemarksQuery, updatePartialApprovalQuery, saveVerificationDraftQuery } from "../queries/dataManager.query";
+import { createNotificationService } from "./notification.service";
 import { pool } from "../config/db";
 import { ensureAssignTeamColumnsQuery } from "../queries/assignTeam.query";
 
@@ -157,7 +158,18 @@ export const verifyMediaService = async (leadId: number | string) => {
     return await updateMediaStatusQuery(leadId, 'Pending_Verification');
 };
 
-export const requestReuploadService = async (leadId: number | string) => {
+export const requestReuploadService = async (leadId: number | string, role?: string, remarks?: string) => {
+    if (role && remarks) {
+        await createNotificationService({
+            type: 'rework_request',
+            title: `Rework Requested for Lead ${leadId}`,
+            detail: `Data Manager has requested a rework. Remarks: ${remarks}`,
+            lead_id: Number(leadId),
+            from_role: 'data-manager',
+            target_roles: [role],
+        });
+        return await updateReuploadRemarksQuery(leadId, role, remarks);
+    }
     return await updateMediaStatusQuery(leadId, 'Reupload_Requested');
 };
 
@@ -181,8 +193,16 @@ export const updateIncomingDataService = async (leadId: number | string, data: a
     return await updateIncomingDataQuery(leadId, data);
 };
 
+export const partialApproveMediaService = async (leadId: number | string, role: string) => {
+    return updatePartialApprovalQuery(leadId, role);
+};
+
 export const deleteIncomingDataService = async (leadId: number | string) => {
     return await deleteIncomingDataQuery(leadId);
+};
+
+export const saveVerificationDraftService = async (leadId: number | string, draft: any) => {
+    return await saveVerificationDraftQuery(leadId, draft);
 };
 
 export const markHardDiskReceivedService = async (leadId: number | string) => {

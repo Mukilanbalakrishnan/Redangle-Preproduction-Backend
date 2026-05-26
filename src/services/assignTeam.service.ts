@@ -77,3 +77,8 @@ export const saveAssignTeamService = async (
 
   return team;
 };
+
+export const updateResourcesService = async (external_lead_id: string, file_path: string) => {
+  const { updateResourcesQuery } = require("../queries/assignTeam.query");
+  return await updateResourcesQuery(external_lead_id, file_path);
+};

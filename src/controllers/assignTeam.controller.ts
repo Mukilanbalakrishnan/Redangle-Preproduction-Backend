@@ -117,3 +117,29 @@ export const getAssignmentStatusController = async (
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const updateResourcesController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { external_lead_id } = req.params;
+    const { file_path } = req.body;
+    
+    if (file_path === undefined) {
+      return res.status(400).json({ success: false, message: 'file_path is required' });
+    }
+    
+    const { updateResourcesService } = require("../services/assignTeam.service");
+    const data = await updateResourcesService(String(external_lead_id), file_path);
+    
+    if (!data) {
+      return res.status(404).json({ success: false, message: 'Assignment not found' });
+    }
+    
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('UPDATE RESOURCES ERROR:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

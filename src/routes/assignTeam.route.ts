@@ -4,7 +4,8 @@ import {
   saveAssignTeamController,
   getAssignTeamController,
   acceptAssignmentController,
-  getAssignmentStatusController
+  getAssignmentStatusController,
+  updateResourcesController
 } from "../controllers/assignTeam.controller";
 
 const router = Router();
@@ -29,6 +30,11 @@ router.patch(
 router.get(
   "/assign-team/:external_lead_id/status",
   getAssignmentStatusController
+);
+
+router.patch(
+  "/assign-team/:external_lead_id/resources",
+  updateResourcesController
 );
 
 export default router;
