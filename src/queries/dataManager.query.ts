@@ -65,11 +65,19 @@ export const getIncomingDataQuery = async () => {
         ed.drone_upload_phase,
         TO_CHAR(ed.drone_hard_disk_delivery_date, 'YYYY-MM-DD') AS drone_hard_disk_delivery_date,
         COALESCE(ed.drone_hard_disk_received, FALSE) AS drone_hard_disk_received,
+        COALESCE(ed.photo_approved, FALSE) AS photo_approved,
+        COALESCE(ed.video_approved, FALSE) AS video_approved,
+        ed.verification_draft,
         COALESCE(ed.media_status, 'Pending') as status,
+        ed.priority_level,
         CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_photographer ELSE at.photographer END AS photographer,
         CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_videographer ELSE at.videographer END AS videographer,
         CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_drone ELSE at.drone END AS drone,
+        (SELECT CONCAT(first_name, ' ', last_name) FROM employees WHERE employee_id = CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_photographer ELSE at.photographer END) AS photographer_name,
+        (SELECT CONCAT(first_name, ' ', last_name) FROM employees WHERE employee_id = CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_videographer ELSE at.videographer END) AS videographer_name,
+        (SELECT CONCAT(first_name, ' ', last_name) FROM employees WHERE employee_id = CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_drone ELSE at.drone END) AS drone_name,
         CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_assignment_date ELSE at.event_date END AS date,
+        at.file_path,
         el.current_phase,
         COALESCE(el.pre_production_step, 'shoot') AS pre_production_step,
         el.phone,
@@ -130,6 +138,51 @@ export const updateMediaStatusQuery = async (leadId: number | string, status: st
       RETURNING *;
     `;
   const result = await pool.query(query, [leadId, status]);
+  return result.rows[0];
+};
+
+export const saveVerificationDraftQuery = async (leadId: number | string, draft: any) => {
+  const query = `
+      UPDATE event_details 
+      SET verification_draft = $2, updated_at = NOW()
+      WHERE external_lead_id = $1
+      RETURNING *;
+    `;
+  const result = await pool.query(query, [leadId, JSON.stringify(draft)]);
+  return result.rows[0];
+};
+
+export const updatePartialApprovalQuery = async (leadId: number | string, role: string) => {
+  let column = '';
+  if (role === 'photographer') column = 'photo_approved';
+  else if (role === 'videographer') column = 'video_approved';
+  else if (role === 'drone') column = 'drone_approved';
+  else throw new Error('Invalid role for partial approval');
+
+  const query = `
+      UPDATE event_details 
+      SET ${column} = TRUE, updated_at = NOW()
+      WHERE external_lead_id = $1
+      RETURNING *;
+    `;
+  const result = await pool.query(query, [leadId]);
+  return result.rows[0];
+};
+
+export const updateReuploadRemarksQuery = async (leadId: number | string, role: string, remarks: string) => {
+  let column = '';
+  if (role === 'photographer') column = 'photo_reupload_remarks';
+  else if (role === 'videographer') column = 'video_reupload_remarks';
+  else if (role === 'drone') column = 'drone_reupload_remarks';
+  else throw new Error('Invalid role for reupload remarks');
+
+  const query = `
+      UPDATE event_details 
+      SET ${column} = $2, media_status = 'Reupload_Requested', updated_at = NOW()
+      WHERE external_lead_id = $1
+      RETURNING *;
+  `;
+  const result = await pool.query(query, [leadId, remarks]);
   return result.rows[0];
 };
 

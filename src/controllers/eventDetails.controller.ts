@@ -48,7 +48,7 @@ export const getEventDetailsByLeadIdController = async (req, res) => {
 export const updateUploadDetailsController = async (req, res) => {
   try {
     const leadId = String(req.params.leadId);
-    const {
+    let {
       drive_link,
       video_drive_link,
       camera_used,
@@ -61,6 +61,30 @@ export const updateUploadDetailsController = async (req, res) => {
       delivery_method,
       hard_disk_delivery_date
     } = req.body;
+
+    const files = req.files as any;
+    const firstClipUrl = files?.firstClipFile?.[0] ? `/uploads/${files.firstClipFile[0].filename}` : null;
+    const lastClipUrl = files?.lastClipFile?.[0] ? `/uploads/${files.lastClipFile[0].filename}` : null;
+
+    if (firstClipUrl || lastClipUrl) {
+      if (upload_notes) {
+        try {
+          const parsed = JSON.parse(upload_notes);
+          if (firstClipUrl) parsed.first_clip = firstClipUrl;
+          if (lastClipUrl) parsed.last_clip = lastClipUrl;
+          upload_notes = JSON.stringify(parsed);
+        } catch(e) {}
+      }
+      if (video_upload_notes) {
+        try {
+          const parsed = JSON.parse(video_upload_notes);
+          if (firstClipUrl) parsed.first_clip = firstClipUrl;
+          if (lastClipUrl) parsed.last_clip = lastClipUrl;
+          video_upload_notes = JSON.stringify(parsed);
+        } catch(e) {}
+      }
+    }
+
     const normalizedUploaderRole = (uploader_role || 'photographer')
       .toLowerCase()
       .replace(/[_-]+/g, ' ')
