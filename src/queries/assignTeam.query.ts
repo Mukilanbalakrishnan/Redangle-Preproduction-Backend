@@ -306,3 +306,19 @@ export const getAssignmentStatusQuery = async (
   );
   return result.rows[0];
 };
+
+// Update file_path resource for a specific lead
+export const updateResourcesQuery = async (
+  external_lead_id: string,
+  file_path: string
+) => {
+  await ensureAssignTeamColumnsQuery();
+  const result = await pool.query(
+    `UPDATE assign_teams
+     SET file_path = $2, updated_at = NOW()
+     WHERE external_lead_id = $1
+     RETURNING *`,
+    [external_lead_id, file_path]
+  );
+  return result.rows[0];
+};

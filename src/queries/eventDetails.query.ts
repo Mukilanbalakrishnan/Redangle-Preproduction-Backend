@@ -39,7 +39,10 @@ export const ensureEventUploadColumnsQuery = async () => {
     ADD COLUMN IF NOT EXISTS event_started_at TIMESTAMP,
     ADD COLUMN IF NOT EXISTS event_paused_at TIMESTAMP,
     ADD COLUMN IF NOT EXISTS event_ended_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS event_started_by VARCHAR(100)
+    ADD COLUMN IF NOT EXISTS event_started_by VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS photo_reupload_remarks TEXT,
+    ADD COLUMN IF NOT EXISTS video_reupload_remarks TEXT,
+    ADD COLUMN IF NOT EXISTS drone_reupload_remarks TEXT
   `);
 };
 
@@ -248,6 +251,18 @@ export const updateUploadDetailsQuery = async (
       save_the_date_drive_link = CASE
         WHEN $12::boolean AND $2::text <> '' THEN $2
         ELSE save_the_date_drive_link
+      END,
+      photo_reupload_remarks = CASE
+        WHEN $9 = 'photographer' THEN NULL
+        ELSE photo_reupload_remarks
+      END,
+      video_reupload_remarks = CASE
+        WHEN $9 = 'videographer' THEN NULL
+        ELSE video_reupload_remarks
+      END,
+      drone_reupload_remarks = CASE
+        WHEN $11::boolean THEN NULL
+        ELSE drone_reupload_remarks
       END,
       save_the_date_upload_notes = CASE
         WHEN $12::boolean AND $8::text <> '' THEN $8

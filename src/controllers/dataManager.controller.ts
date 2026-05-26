@@ -44,13 +44,28 @@ export const verifyMediaController = async (req: Request, res: Response) => {
 export const requestReuploadController = async (req: Request, res: Response) => {
     try {
         const leadId = String(req.params.leadId);
-        const data = await requestReuploadService(leadId);
+        const { role, remarks } = req.body;
+        const data = await requestReuploadService(leadId, role, remarks);
         if (!data) {
             return res.status(404).json({ success: false, message: "Lead not found" });
         }
         res.status(200).json({ success: true, data });
     } catch (error: any) {
         console.error("REQUEST REUPLOAD ERROR:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const saveVerificationDraftController = async (req: Request, res: Response) => {
+    try {
+        const leadId = String(req.params.leadId);
+        const draft = req.body.draft;
+        const { saveVerificationDraftService } = require("../services/dataManager.service");
+        const data = await saveVerificationDraftService(leadId, draft);
+        if (!data) return res.status(404).json({ success: false, message: "Lead not found" });
+        res.status(200).json({ success: true, data });
+    } catch (error: any) {
+        console.error("SAVE DRAFT ERROR:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -76,6 +91,20 @@ export const markHardDiskReceivedController = async (req: Request, res: Response
         if (String(error.message || '').startsWith('Cannot verify yet.')) {
             return res.status(400).json({ success: false, message: error.message });
         }
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const partialApproveMediaController = async (req: Request, res: Response) => {
+    try {
+        const leadId = String(req.params.leadId);
+        const { role } = req.body;
+        const { partialApproveMediaService } = require("../services/dataManager.service");
+        const data = await partialApproveMediaService(leadId, role);
+        if (!data) return res.status(404).json({ success: false, message: "Lead not found" });
+        res.status(200).json({ success: true, data });
+    } catch (error: any) {
+        console.error("PARTIAL APPROVE MEDIA ERROR:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };

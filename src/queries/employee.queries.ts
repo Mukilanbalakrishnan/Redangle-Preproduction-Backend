@@ -63,7 +63,8 @@ const roleAssignmentsLateral = `
                      ELSE at.photographer = ANY($1::text[]) END,
                 ed.drive_link,
                 ed.upload_notes,
-                CASE WHEN COALESCE(ed.drive_link, '') != '' THEN 'Submitted' ELSE NULL END
+                CASE WHEN COALESCE(ed.drive_link, '') != '' THEN 'Submitted' ELSE NULL END,
+                ed.photo_reupload_remarks
             ),
             (
                 'videography',
@@ -78,7 +79,8 @@ const roleAssignmentsLateral = `
                      ELSE at.videographer = ANY($1::text[]) END,
                 ed.video_drive_link,
                 ed.video_upload_notes,
-                CASE WHEN COALESCE(ed.video_drive_link, '') != '' THEN 'Submitted' ELSE NULL END
+                CASE WHEN COALESCE(ed.video_drive_link, '') != '' THEN 'Submitted' ELSE NULL END,
+                ed.video_reupload_remarks
             ),
             (
                 'drone-coverage',
@@ -94,7 +96,8 @@ const roleAssignmentsLateral = `
                 CASE
                     WHEN COALESCE(ed.drone_photo_drive_link, '') != '' OR COALESCE(ed.drone_video_drive_link, '') != '' THEN 'Submitted'
                     ELSE NULL
-                END
+                END,
+                ed.drone_reupload_remarks
             ),
             (
                 'save-the-date-post',
@@ -108,7 +111,8 @@ const roleAssignmentsLateral = `
                 COALESCE(
                     ed.save_the_date_submission_status,
                     CASE WHEN COALESCE(ed.save_the_date_drive_link, '') != '' THEN 'Submitted' ELSE NULL END
-                )
+                ),
+                NULL
             ),
             (
                 'save-the-video',
@@ -122,7 +126,8 @@ const roleAssignmentsLateral = `
                 COALESCE(
                     ed.save_the_video_submission_status,
                     CASE WHEN COALESCE(ed.save_the_video_drive_link, '') != '' THEN 'Submitted' ELSE NULL END
-                )
+                ),
+                NULL
             ),
             (
                 'retouch',
@@ -136,7 +141,8 @@ const roleAssignmentsLateral = `
                 COALESCE(
                     ed.retouch_submission_status,
                     CASE WHEN COALESCE(ed.retouch_drive_link, '') != '' THEN 'Submitted' ELSE NULL END
-                )
+                ),
+                NULL
             ),
             (
                 'secondary-photography',
@@ -151,7 +157,8 @@ const roleAssignmentsLateral = `
                      ELSE COALESCE(at.secondary_photographer, '[]'::jsonb) ?| $1::text[] END,
                 ed.drive_link,
                 ed.upload_notes,
-                CASE WHEN COALESCE(ed.drive_link, '') != '' THEN 'Submitted' ELSE NULL END
+                CASE WHEN COALESCE(ed.drive_link, '') != '' THEN 'Submitted' ELSE NULL END,
+                NULL
             ),
             (
                 'secondary-videography',
@@ -166,7 +173,8 @@ const roleAssignmentsLateral = `
                      ELSE COALESCE(at.secondary_videographer, '[]'::jsonb) ?| $1::text[] END,
                 ed.video_drive_link,
                 ed.video_upload_notes,
-                CASE WHEN COALESCE(ed.video_drive_link, '') != '' THEN 'Submitted' ELSE NULL END
+                CASE WHEN COALESCE(ed.video_drive_link, '') != '' THEN 'Submitted' ELSE NULL END,
+                NULL
             ),
             (
                 'secondary-drone-coverage',
@@ -182,7 +190,8 @@ const roleAssignmentsLateral = `
                 CASE
                     WHEN COALESCE(ed.drone_photo_drive_link, '') != '' OR COALESCE(ed.drone_video_drive_link, '') != '' THEN 'Submitted'
                     ELSE NULL
-                END
+                END,
+                NULL
             ),
             (
                 COALESCE(
@@ -240,9 +249,10 @@ const roleAssignmentsLateral = `
                 ),
                 NULL,
                 NULL,
+                NULL,
                 NULL
             )
-    ) AS role_assignment(task_key, task_name, flow_stage, request_source, stage_path, is_assigned, upload_link, upload_notes, status)
+    ) AS role_assignment(task_key, task_name, flow_stage, request_source, stage_path, is_assigned, upload_link, upload_notes, status, reupload_remarks)
 `;
 
 // Dashboard: stats + recent projects for an employee
@@ -369,6 +379,7 @@ export const getAssignedProjectsQuery = async (employeeId: number | string) => {
                 role_assignment.upload_link,
                 role_assignment.upload_notes,
                 role_assignment.status,
+                role_assignment.reupload_remarks,
                 COALESCE(ed.event_status, 'not_started') AS event_status,
                 ed.event_started_at,
                 ed.event_paused_at,
@@ -429,6 +440,7 @@ export const getMyWorkQuery = async (employeeId: number | string) => {
                 role_assignment.upload_link,
                 role_assignment.upload_notes,
                 role_assignment.status,
+                role_assignment.reupload_remarks,
                 at.created_at
             FROM assign_teams at
             LEFT JOIN external_leads el
