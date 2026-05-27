@@ -77,6 +77,8 @@ export const getIncomingDataQuery = async () => {
         (SELECT CONCAT(first_name, ' ', last_name) FROM employees WHERE employee_id = CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_videographer ELSE at.videographer END) AS videographer_name,
         (SELECT CONCAT(first_name, ' ', last_name) FROM employees WHERE employee_id = CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_drone ELSE at.drone END) AS drone_name,
         CASE WHEN COALESCE(el.current_phase, '') = 'event' THEN at.event_assignment_date ELSE at.event_date END AS date,
+        at.additional_staff,
+        at.event_additional_staff,
         at.file_path,
         el.current_phase,
         COALESCE(el.pre_production_step, 'shoot') AS pre_production_step,

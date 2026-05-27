@@ -259,6 +259,23 @@ export const reviewProjectController = async (req: Request, res: Response) => {
 
       // Stage progression is gated by client delivery approval.
       // CRM approval only makes the editor link available for sending.
+    } else if (status === 'Rework') {
+      const { createNotificationService } = require('../services/notification.service');
+      const leadIdMatch = data.project_id.match(/CRM-(\d+)/);
+      const leadIdNumber = leadIdMatch ? parseInt(leadIdMatch[1]) : undefined;
+      
+      try {
+        await createNotificationService({
+          type: 'rework_request',
+          title: `Rework Requested for ${data.project_type}`,
+          detail: `CRM has requested a rework. Remarks: ${admin_notes || 'Please check dashboard.'}`,
+          lead_id: leadIdNumber,
+          from_role: 'crm',
+          target_roles: [data.employee_id],
+        });
+      } catch (e) {
+        console.error('Failed to create rework notification:', e);
+      }
     }
 
     res.status(200).json({ success: true, data, message: `Project ${status.toLowerCase()} successfully` });
