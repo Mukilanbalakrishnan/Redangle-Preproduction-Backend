@@ -112,7 +112,7 @@ const roleAssignmentsLateral = `
                     ed.save_the_date_submission_status,
                     CASE WHEN COALESCE(ed.save_the_date_drive_link, '') != '' THEN 'Submitted' ELSE NULL END
                 ),
-                NULL
+                ed.save_the_date_reupload_remarks
             ),
             (
                 'save-the-video',
@@ -127,7 +127,7 @@ const roleAssignmentsLateral = `
                     ed.save_the_video_submission_status,
                     CASE WHEN COALESCE(ed.save_the_video_drive_link, '') != '' THEN 'Submitted' ELSE NULL END
                 ),
-                NULL
+                ed.save_the_video_reupload_remarks
             ),
             (
                 'retouch',
@@ -142,7 +142,7 @@ const roleAssignmentsLateral = `
                     ed.retouch_submission_status,
                     CASE WHEN COALESCE(ed.retouch_drive_link, '') != '' THEN 'Submitted' ELSE NULL END
                 ),
-                NULL
+                ed.retouch_reupload_remarks
             ),
             (
                 'secondary-photography',
@@ -379,7 +379,7 @@ export const getAssignedProjectsQuery = async (employeeId: number | string) => {
                 role_assignment.upload_link,
                 role_assignment.upload_notes,
                 role_assignment.status,
-                role_assignment.reupload_remarks,
+                role_assignment.reupload_remarks AS admin_notes,
                 COALESCE(ed.event_status, 'not_started') AS event_status,
                 ed.event_started_at,
                 ed.event_paused_at,
@@ -440,7 +440,7 @@ export const getMyWorkQuery = async (employeeId: number | string) => {
                 role_assignment.upload_link,
                 role_assignment.upload_notes,
                 role_assignment.status,
-                role_assignment.reupload_remarks,
+                role_assignment.reupload_remarks AS admin_notes,
                 at.created_at
             FROM assign_teams at
             LEFT JOIN external_leads el
