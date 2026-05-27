@@ -6,6 +6,8 @@ export interface CreateNotificationDTO {
     from_role?: string;
     from_name?: string;
     target_roles: string[];
+    target_employee_id?: string;
+    source_stage?: string;
 }
 
 export interface Notification {
@@ -18,6 +20,8 @@ export interface Notification {
     from_role: string | null;
     from_name: string | null;
     target_roles: string[];
+    target_employee_id: string | null;
+    source_stage: string | null;
     is_read: boolean;
     created_at: Date;
 }

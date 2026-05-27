@@ -138,6 +138,7 @@ export const updateUploadDetailsController = async (req, res) => {
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
 
+      const sourceStage = currentPhase === 'event' ? 'event' : 'pre-production';
       await createNotificationService({
         type: 'raw_data_uploaded',
         title: isHardDisk ? `${stageLabel} hard disk delivery scheduled` : `${stageLabel} raw data uploaded`,
@@ -148,6 +149,7 @@ export const updateUploadDetailsController = async (req, res) => {
         from_role: normalizedUploaderRole,
         from_name: req.body.uploader_name || roleLabel,
         target_roles: ['data_manager'],
+        source_stage: sourceStage,
       });
     } catch (e) {
       console.error('Failed to notify data manager about raw data upload:', e);

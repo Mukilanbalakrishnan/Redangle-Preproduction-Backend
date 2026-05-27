@@ -40,6 +40,10 @@ export const ensureEventUploadColumnsQuery = async () => {
     ADD COLUMN IF NOT EXISTS event_paused_at TIMESTAMP,
     ADD COLUMN IF NOT EXISTS event_ended_at TIMESTAMP,
     ADD COLUMN IF NOT EXISTS event_started_by VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS photo_approved BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS video_approved BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS drone_approved BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS verification_draft JSONB,
     ADD COLUMN IF NOT EXISTS photo_reupload_remarks TEXT,
     ADD COLUMN IF NOT EXISTS video_reupload_remarks TEXT,
     ADD COLUMN IF NOT EXISTS drone_reupload_remarks TEXT

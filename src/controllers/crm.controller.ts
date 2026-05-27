@@ -214,6 +214,14 @@ const resolveClientDeliveryCrmRole = (deliveryType: string, lead: any) => {
     );
 };
 
+const resolveClientDeliverySourceStage = (deliveryType: string, lead: any) => {
+    const currentPhase = String(lead?.current_phase || '').toLowerCase();
+    if (deliveryType === 'EVENT_RAW_DATA' || currentPhase === 'event') return 'event';
+    if (currentPhase === 'post_production') return 'post-production';
+    if (deliveryType === 'FINAL_DELIVERABLES') return 'client';
+    return 'pre-production';
+};
+
 const deliveryTypeLabel = (deliveryType: string) => {
     if (deliveryType === 'RAW_DATA') return 'incoming raw data';
     if (deliveryType === 'EVENT_RAW_DATA') return 'event raw data';
@@ -247,6 +255,7 @@ const notifyClientDeliveryResponse = async ({
         from_role: 'client',
         from_name: 'Client',
         target_roles: [targetRole],
+        source_stage: resolveClientDeliverySourceStage(deliveryType, lead),
     });
 };
 
