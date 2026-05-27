@@ -16,12 +16,15 @@ export const ensureEventUploadColumnsQuery = async () => {
     ADD COLUMN IF NOT EXISTS save_the_date_drive_link TEXT,
     ADD COLUMN IF NOT EXISTS save_the_date_upload_notes TEXT,
     ADD COLUMN IF NOT EXISTS save_the_date_submission_status VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS save_the_date_reupload_remarks TEXT,
     ADD COLUMN IF NOT EXISTS save_the_video_drive_link TEXT,
     ADD COLUMN IF NOT EXISTS save_the_video_upload_notes TEXT,
     ADD COLUMN IF NOT EXISTS save_the_video_submission_status VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS save_the_video_reupload_remarks TEXT,
     ADD COLUMN IF NOT EXISTS retouch_drive_link TEXT,
     ADD COLUMN IF NOT EXISTS retouch_upload_notes TEXT,
     ADD COLUMN IF NOT EXISTS retouch_submission_status VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS retouch_reupload_remarks TEXT,
     ADD COLUMN IF NOT EXISTS photo_delivery_method VARCHAR(20),
     ADD COLUMN IF NOT EXISTS photo_hard_disk_delivery_date DATE,
     ADD COLUMN IF NOT EXISTS photo_hard_disk_received BOOLEAN DEFAULT FALSE,
@@ -272,6 +275,10 @@ export const updateUploadDetailsQuery = async (
         WHEN $12::boolean AND $2::text <> '' THEN 'Submitted'
         ELSE save_the_date_submission_status
       END,
+      save_the_date_reupload_remarks = CASE
+        WHEN $12::boolean AND $2::text <> '' THEN NULL
+        ELSE save_the_date_reupload_remarks
+      END,
       save_the_video_drive_link = CASE
         WHEN $13::boolean AND COALESCE(NULLIF($3::text, ''), NULLIF($2::text, '')) IS NOT NULL
           THEN COALESCE(NULLIF($3::text, ''), NULLIF($2::text, ''))
@@ -286,6 +293,10 @@ export const updateUploadDetailsQuery = async (
         WHEN $13::boolean AND COALESCE(NULLIF($3::text, ''), NULLIF($2::text, '')) IS NOT NULL THEN 'Submitted'
         ELSE save_the_video_submission_status
       END,
+      save_the_video_reupload_remarks = CASE
+        WHEN $13::boolean AND COALESCE(NULLIF($3::text, ''), NULLIF($2::text, '')) IS NOT NULL THEN NULL
+        ELSE save_the_video_reupload_remarks
+      END,
       retouch_drive_link = CASE
         WHEN $14::boolean AND $2::text <> '' THEN $2
         ELSE retouch_drive_link
@@ -297,6 +308,10 @@ export const updateUploadDetailsQuery = async (
       retouch_submission_status = CASE
         WHEN $14::boolean AND $2::text <> '' THEN 'Submitted'
         ELSE retouch_submission_status
+      END,
+      retouch_reupload_remarks = CASE
+        WHEN $14::boolean AND $2::text <> '' THEN NULL
+        ELSE retouch_reupload_remarks
       END,
       photo_delivery_method = CASE
         WHEN $9 = 'photographer' THEN $15

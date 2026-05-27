@@ -570,7 +570,31 @@ export const reviewProjectQuery = async (id: number, status: 'Approved' | 'Rewor
     `UPDATE assigned_projects SET status = $1, admin_notes = $2, updated_at = NOW() WHERE id = $3 RETURNING *;`,
     [status, admin_notes || null, id]
   );
-  return result.rows[0];
+  
+  const record = result.rows[0];
+  if (record) {
+    const isSaveTheDate = record.project_type === 'Save the Date' || record.project_type === 'Save the Date Post';
+    const isSaveTheVideo = record.project_type === 'Save the Video';
+    const isRetouching = record.project_type === 'Retouching';
+
+    if (isSaveTheDate || isSaveTheVideo || isRetouching) {
+      const leadId = record.project_id.replace(/^CRM-/, '');
+      await pool.query(
+        `UPDATE event_details SET
+           save_the_date_submission_status = CASE WHEN $1::boolean THEN $4 ELSE save_the_date_submission_status END,
+           save_the_date_reupload_remarks = CASE WHEN $1::boolean AND $4 = 'Rework' THEN $6 ELSE save_the_date_reupload_remarks END,
+           save_the_video_submission_status = CASE WHEN $2::boolean THEN $4 ELSE save_the_video_submission_status END,
+           save_the_video_reupload_remarks = CASE WHEN $2::boolean AND $4 = 'Rework' THEN $6 ELSE save_the_video_reupload_remarks END,
+           retouch_submission_status = CASE WHEN $3::boolean THEN $4 ELSE retouch_submission_status END,
+           retouch_reupload_remarks = CASE WHEN $3::boolean AND $4 = 'Rework' THEN $6 ELSE retouch_reupload_remarks END,
+           updated_at = NOW()
+         WHERE external_lead_id = $5`,
+         [isSaveTheDate, isSaveTheVideo, isRetouching, status, leadId, admin_notes || null]
+      );
+    }
+  }
+
+  return record;
 };
 
 export const saveApprovedDriveLinkQuery = async (data: ApprovedDriveLinkRecord): Promise<ApprovedDriveLinkRecord> => {
