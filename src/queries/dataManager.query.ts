@@ -144,6 +144,7 @@ export const updateMediaStatusQuery = async (leadId: number | string, status: st
 };
 
 export const saveVerificationDraftQuery = async (leadId: number | string, draft: any) => {
+  await ensureEventUploadColumnsQuery();
   const query = `
       UPDATE event_details 
       SET verification_draft = $2, updated_at = NOW()
@@ -155,6 +156,7 @@ export const saveVerificationDraftQuery = async (leadId: number | string, draft:
 };
 
 export const updatePartialApprovalQuery = async (leadId: number | string, role: string) => {
+  await ensureEventUploadColumnsQuery();
   let column = '';
   if (role === 'photographer') column = 'photo_approved';
   else if (role === 'videographer') column = 'video_approved';

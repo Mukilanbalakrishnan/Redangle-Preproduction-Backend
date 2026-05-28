@@ -1,15 +1,42 @@
 import { pool } from "../config/db";
 import { CreateLeaveRequestDTO, UpdateLeaveStatusDTO, LeaveRecord } from "../types/leave.types";
 
-// Safely convert EMP-XXX or numeric string to integer
-const toNumericEmployeeId = (id: string | number): number => {
-  const numericId = typeof id === 'string' && id.startsWith('EMP-')
-    ? parseInt(id.replace('EMP-', ''), 10)
-    : Number(id);
-  if (isNaN(numericId) || numericId <= 0) {
+const normalizeEmployeeIdTargets = (id: string | number): string[] => {
+  const raw = String(id || "").trim();
+  const numeric = raw.replace(/\D/g, "");
+  const unpaddedNumeric = numeric ? String(Number(numeric)) : "";
+
+  if (!raw || !numeric || Number.isNaN(Number(unpaddedNumeric)) || Number(unpaddedNumeric) <= 0) {
     throw new Error(`Invalid employee ID: ${id}`);
   }
-  return numericId;
+
+  return Array.from(new Set([
+    raw,
+    raw.toUpperCase(),
+    numeric,
+    unpaddedNumeric,
+    `EMP-${numeric}`,
+    `EMP-${unpaddedNumeric}`,
+  ].filter(Boolean)));
+};
+
+const employeeJoinSql = `
+  LEFT JOIN employees e
+    ON e.employee_id = l.employee_id
+    OR e.employee_id = ('EMP-' || regexp_replace(l.employee_id::text, '\\D', '', 'g'))
+    OR regexp_replace(e.employee_id::text, '\\D', '', 'g') = regexp_replace(l.employee_id::text, '\\D', '', 'g')
+`;
+
+const canonicalEmployeeId = async (id: string | number) => {
+  const targets = normalizeEmployeeIdTargets(id);
+  const result = await pool.query(
+    `SELECT employee_id FROM employees
+     WHERE employee_id = ANY($1::text[])
+        OR regexp_replace(employee_id::text, '\\D', '', 'g') = regexp_replace($2::text, '\\D', '', 'g')
+     LIMIT 1`,
+    [targets, String(id)]
+  );
+  return result.rows[0]?.employee_id || targets.find(value => value.startsWith("EMP-")) || String(id);
 };
 
 export const createLeaveTablesQuery = async () => {
@@ -43,27 +70,30 @@ export const createLeaveTablesQuery = async () => {
 };
 
 export const createLeaveRequestQuery = async (data: CreateLeaveRequestDTO): Promise<LeaveRecord> => {
+  const employeeId = await canonicalEmployeeId(data.employee_id);
   const result = await pool.query(
     `
     INSERT INTO employee_leave_requests (employee_id, leave_type, from_date, to_date, no_of_days, reason, status)
     VALUES ($1, $2, $3, $4, $5, $6, 'Pending')
     RETURNING *;
     `,
-    [toNumericEmployeeId(data.employee_id), data.leave_type, data.from_date, data.to_date, data.no_of_days, data.reason]
+    [employeeId, data.leave_type, data.from_date, data.to_date, data.no_of_days, data.reason]
   );
   return result.rows[0];
 };
 
 export const getLeaveRequestsByEmployeeQuery = async (employee_id: string): Promise<LeaveRecord[]> => {
+  const targets = normalizeEmployeeIdTargets(employee_id);
   const result = await pool.query(
     `
     SELECT l.*, e.first_name || ' ' || COALESCE(e.last_name, '') as employee_name, e.role
     FROM employee_leave_requests l
-    LEFT JOIN employees e ON e.employee_id = ('EMP-' || l.employee_id::text)
-    WHERE l.employee_id = $1
+    ${employeeJoinSql}
+    WHERE l.employee_id = ANY($1::text[])
+       OR regexp_replace(l.employee_id::text, '\\D', '', 'g') = regexp_replace($2::text, '\\D', '', 'g')
     ORDER BY l.created_at DESC
     `,
-    [toNumericEmployeeId(employee_id)]
+    [targets, employee_id]
   );
   return result.rows;
 };
@@ -74,7 +104,7 @@ export const getAllLeaveRequestsQuery = async (viewer_role?: string): Promise<Le
     const result = await pool.query(`
       SELECT l.*, e.first_name || ' ' || COALESCE(e.last_name, '') as employee_name, e.role
       FROM employee_leave_requests l
-      LEFT JOIN employees e ON e.employee_id = ('EMP-' || l.employee_id::text)
+      ${employeeJoinSql}
       ORDER BY l.created_at DESC
     `);
     return result.rows;
@@ -86,7 +116,7 @@ export const getAllLeaveRequestsQuery = async (viewer_role?: string): Promise<Le
     const result = await pool.query(`
       SELECT l.*, e.first_name || ' ' || COALESCE(e.last_name, '') as employee_name, e.role
       FROM employee_leave_requests l
-      LEFT JOIN employees e ON e.employee_id = ('EMP-' || l.employee_id::text)
+      ${employeeJoinSql}
       WHERE e.role NOT IN ('admin', 'crm', 'event-coordinator', 'data-manager', 'operational-manager')
       ORDER BY l.created_at DESC
     `);
@@ -99,7 +129,7 @@ export const getAllLeaveRequestsQuery = async (viewer_role?: string): Promise<Le
     const result = await pool.query(`
       SELECT l.*, e.first_name || ' ' || COALESCE(e.last_name, '') as employee_name, e.role
       FROM employee_leave_requests l
-      LEFT JOIN employees e ON e.employee_id = ('EMP-' || l.employee_id::text)
+      ${employeeJoinSql}
       WHERE e.role NOT IN ('admin', 'crm', 'event-coordinator', 'data-manager', 'operational-manager')
       ORDER BY l.created_at DESC
     `);
@@ -112,7 +142,7 @@ export const getAllLeaveRequestsQuery = async (viewer_role?: string): Promise<Le
     const result = await pool.query(`
       SELECT l.*, e.first_name || ' ' || COALESCE(e.last_name, '') as employee_name, e.role
       FROM employee_leave_requests l
-      LEFT JOIN employees e ON e.employee_id = ('EMP-' || l.employee_id::text)
+      ${employeeJoinSql}
       WHERE e.role NOT IN ('admin', 'crm', 'event-coordinator', 'data-manager', 'operational-manager', 'photographer', 'videographer', 'drone')
       ORDER BY l.created_at DESC
     `);
@@ -124,7 +154,7 @@ export const getAllLeaveRequestsQuery = async (viewer_role?: string): Promise<Le
     const result = await pool.query(`
       SELECT l.*, e.first_name || ' ' || COALESCE(e.last_name, '') as employee_name, e.role
       FROM employee_leave_requests l
-      LEFT JOIN employees e ON e.employee_id = ('EMP-' || l.employee_id::text)
+      ${employeeJoinSql}
       WHERE e.role IN ('traditional-video-editor', 'retouch-editor', 'album-designer')
       ORDER BY l.created_at DESC
     `);

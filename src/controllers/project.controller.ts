@@ -18,6 +18,44 @@ import {
   upsertCRMFinalApprovalService,
 } from "../services/project.service";
 import { updateLeadStatusQuery } from "../queries/externalLead.query";
+import { createNotificationService } from "../services/notification.service";
+
+const projectTypeToRoleSlug = (projectType?: string) => {
+  const roleMap: Record<string, string> = {
+    "Save the Date": "employee-1",
+    "Save the Video": "employee-2",
+    "Retouching": "employee-4",
+    "Traditional Video Editing": "traditional-video-editor",
+    "Retouch Editing": "retouch-editor",
+    "Album Design": "album-designer",
+    "Candid Video Editing": "candid-video-editor",
+    "Assistant": "employee",
+  };
+  return roleMap[String(projectType || "")] || String(projectType || "employee").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+};
+
+const projectAssignmentStage = (phase?: string) =>
+  String(phase || "").toLowerCase() === "post_production" ? "post-production" : "pre-production";
+
+const notifyProjectAssignment = async (assignment: any, meta: any = {}) => {
+  if (!assignment?.employee_id) return;
+
+  const sourceStage = projectAssignmentStage(meta.phase);
+  const stageLabel = sourceStage === "post-production" ? "Post-production" : "Pre-production";
+  const fromRole = meta.assigned_by_role || (sourceStage === "post-production" ? "operational-manager" : "crm");
+  const fromName = meta.assigned_by_name || fromRole;
+
+  await createNotificationService({
+    type: "work_assigned",
+    title: "Work Assigned",
+    detail: `${fromName} assigned you ${assignment.project_type || "project"} work for ${assignment.project_name || assignment.project_id} from ${stageLabel}.`,
+    from_role: fromRole,
+    from_name: fromName,
+    target_roles: [projectTypeToRoleSlug(assignment.project_type)],
+    target_employee_id: String(assignment.employee_id),
+    source_stage: sourceStage,
+  }).catch(err => console.error("Project assignment notification error:", err));
+};
 
 export const assignProjectController = async (req: Request, res: Response) => {
   try {
@@ -28,6 +66,7 @@ export const assignProjectController = async (req: Request, res: Response) => {
     }
 
     const data = await assignProjectService(req.body);
+    await notifyProjectAssignment(data, req.body);
 
     res.status(201).json({
       success: true,
@@ -136,7 +175,7 @@ export const getAssignmentsByProjectIdController = async (req: Request, res: Res
 
 export const assignProjectBatchController = async (req: Request, res: Response) => {
   try {
-    const { external_lead_id, project_name, editors, assistants, phase } = req.body;
+    const { external_lead_id, project_name, editors, assistants, phase, assigned_by_name, assigned_by_role } = req.body;
 
     if (!external_lead_id || !project_name || !editors) {
       return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -190,10 +229,21 @@ export const assignProjectBatchController = async (req: Request, res: Response) 
       }
     }
 
-    await replaceProjectAssignmentsForTypesService(
-      `CRM-${external_lead_id}`,
+    const projectId = `CRM-${external_lead_id}`;
+    const existingAssignments = await getAssignmentsByProjectIdService(projectId);
+    const existingKeys = new Set(
+      existingAssignments.map((item: any) => `${item.employee_id}:${item.project_type}`)
+    );
+
+    const savedAssignments = await replaceProjectAssignmentsForTypesService(
+      projectId,
       editableProjectTypes,
       assignments
+    );
+
+    await Promise.all(savedAssignments
+      .filter((assignment: any) => !existingKeys.has(`${assignment.employee_id}:${assignment.project_type}`))
+      .map((assignment: any) => notifyProjectAssignment(assignment, { phase, assigned_by_name, assigned_by_role }))
     );
 
     // Update the lead status

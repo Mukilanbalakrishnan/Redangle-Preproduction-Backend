@@ -7,6 +7,117 @@ import {
 } from "../services/leave.service";
 import { createNotificationService } from "../services/notification.service";
 import { pool } from "../config/db";
+import { ensureAssignTeamColumnsQuery } from "../queries/assignTeam.query";
+import { ensureNotificationTableQuery } from "../queries/notification.queries";
+
+const normalizeEmployeeIdTargets = (employeeId?: string | number | null) => {
+  const raw = String(employeeId || "").trim();
+  if (!raw) return [];
+  const numeric = raw.replace(/\D/g, "");
+  const unpaddedNumeric = numeric ? String(Number(numeric)) : "";
+  return Array.from(new Set([
+    raw,
+    raw.toUpperCase(),
+    numeric,
+    unpaddedNumeric,
+    numeric ? `EMP-${numeric}` : "",
+    unpaddedNumeric ? `EMP-${unpaddedNumeric}` : "",
+  ].filter(Boolean)));
+};
+
+const employeeLeaveJoinSql = `
+  LEFT JOIN employees e
+    ON e.employee_id = l.employee_id
+    OR e.employee_id = ('EMP-' || regexp_replace(l.employee_id::text, '\\D', '', 'g'))
+    OR regexp_replace(e.employee_id::text, '\\D', '', 'g') = regexp_replace(l.employee_id::text, '\\D', '', 'g')
+`;
+
+const normalizeSourceStage = (phase?: string | null) => {
+  const normalized = String(phase || "").toLowerCase();
+  if (normalized === "post_production") return "post-production";
+  if (normalized === "pre_production") return "pre-production";
+  if (normalized === "event") return "event";
+  return "system";
+};
+
+const activeStatusSql = `
+  LOWER(COALESCE(status, 'pending')) NOT IN ('completed', 'approved', 'cancelled', 'canceled', 'rejected')
+`;
+
+const isApprovedStatus = (status?: string) => status === 'Approved' || status === 'Accepted';
+const isRejectedStatus = (status?: string) => status === 'Rejected';
+
+const dateOnly = (value: any) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value || '');
+  return parsed.toISOString().slice(0, 10);
+};
+
+const leaveStatusNotificationContent = (leaveData: any, status: string) => {
+  const fromDate = dateOnly(leaveData.from_date);
+  const toDate = dateOnly(leaveData.to_date);
+  const title = isApprovedStatus(status)
+    ? 'Leave Request Approved'
+    : isRejectedStatus(status)
+      ? 'Leave Request Rejected'
+      : 'Leave Request Updated';
+
+  const detail = isApprovedStatus(status)
+    ? `Your leave request for ${fromDate} to ${toDate} has been approved.`
+    : isRejectedStatus(status)
+      ? `Your leave request for ${fromDate} to ${toDate} has been rejected.`
+      : `Your leave request status has been updated to ${status}.`;
+
+  return { title, detail };
+};
+
+const ensureEmployeeLeaveStatusNotification = async (leaveData: any, status: string) => {
+  if (!leaveData?.employee_id || (!isApprovedStatus(status) && !isRejectedStatus(status))) return;
+
+  const { title, detail } = leaveStatusNotificationContent(leaveData, status);
+  const employeeTargets = normalizeEmployeeIdTargets(leaveData.employee_id);
+  await ensureNotificationTableQuery();
+
+  const existing = await pool.query(
+    `SELECT id FROM notifications
+     WHERE type = 'leave_request'
+       AND title = $1
+       AND detail = $2
+       AND target_employee_id = ANY($3::text[])
+     LIMIT 1`,
+    [title, detail, employeeTargets]
+  );
+
+  if (existing.rows[0]) return;
+
+  await createNotificationService({
+    type: 'leave_request',
+    title,
+    detail,
+    lead_id: undefined,
+    from_role: 'system',
+    from_name: 'System',
+    target_roles: [],
+    target_employee_id: String(leaveData.employee_id || ''),
+    source_stage: 'system',
+  }).catch(err => console.error("Status update notification error:", err));
+};
+
+const notifyManagersForApprovedLeave = async (leaveData: any) => {
+  const employee_id = leaveData.employee_id;
+  if (!employee_id) return;
+  try { await ensureAssignTeamColumnsQuery(); } catch (err) {}
+  
+  const empName = leaveData.employee_name || 'Employee';
+  const detail = `${empName} has approved leave from ${leaveData.from_date} to ${leaveData.to_date}. Please check assignments.`;
+  await createNotificationService({
+    type: 'leave_cascade',
+    title: 'Team Member Leave Approved',
+    detail,
+    target_roles: ['operational-manager', 'event-coordinator', 'crm'],
+    source_stage: 'system',
+  }).catch(err => console.error(err));
+};
 
 export const createLeaveRequestController = async (req: Request, res: Response) => {
   try {
@@ -20,8 +131,12 @@ export const createLeaveRequestController = async (req: Request, res: Response) 
 
     // Get employee details for notification
     const empResult = await pool.query(
-      `SELECT first_name, last_name, role as position FROM employees WHERE employee_id = $1`,
-      [employee_id]
+      `SELECT first_name, last_name, role as position
+       FROM employees
+       WHERE employee_id = ANY($1::text[])
+          OR regexp_replace(employee_id::text, '\\D', '', 'g') = regexp_replace($2::text, '\\D', '', 'g')
+       LIMIT 1`,
+      [normalizeEmployeeIdTargets(employee_id), String(employee_id)]
     );
 
     // Roles whose leave requests should ONLY go to admin for approval
@@ -53,6 +168,7 @@ export const createLeaveRequestController = async (req: Request, res: Response) 
       from_role: requesterRole,
       from_name: requesterName,
       target_roles,
+      source_stage: 'system',
     }).catch(err => console.error("Notification trigger error:", err));
 
     res.status(201).json({
@@ -77,6 +193,10 @@ export const getLeaveRequestsByEmployeeController = async (req: Request, res: Re
     }
 
     const data = await getLeaveRequestsByEmployeeService(employee_id as string);
+
+    await Promise.all(
+      data.map((leave: any) => ensureEmployeeLeaveStatusNotification(leave, leave.status))
+    );
 
     res.status(200).json({
       success: true,
@@ -122,7 +242,7 @@ export const updateLeaveStatusController = async (req: Request, res: Response) =
     const leaveResult = await pool.query(
       `SELECT l.*, COALESCE(e.first_name || ' ' || COALESCE(e.last_name, ''), 'Unknown') as employee_name, e.role
        FROM employee_leave_requests l
-       LEFT JOIN employees e ON e.employee_id = ('EMP-' || l.employee_id::text)
+       ${employeeLeaveJoinSql}
        WHERE l.leave_request_id = $1`,
       [id]
     );
@@ -133,18 +253,6 @@ export const updateLeaveStatusController = async (req: Request, res: Response) =
 
     // Notify the employee about the status change
     if (leaveData) {
-      const notificationTitle = status === 'Approved' || status === 'Accepted'
-        ? 'Leave Request Approved'
-        : status === 'Rejected'
-          ? 'Leave Request Rejected'
-          : 'Leave Request Updated';
-
-      const notificationDetail = status === 'Approved' || status === 'Accepted'
-        ? `Your leave request for ${leaveData.from_date} to ${leaveData.to_date} has been approved.`
-        : status === 'Rejected'
-          ? `Your leave request for ${leaveData.from_date} to ${leaveData.to_date} has been rejected.`
-          : `Your leave request status has been updated to ${status}.`;
-
       // Map display role names to normalized role names for notification targeting
       const roleDisplayToNormalised: Record<string, string> = {
         'Photographer': 'photographer',
@@ -165,15 +273,11 @@ export const updateLeaveStatusController = async (req: Request, res: Response) =
 
       const normalisedRole = roleDisplayToNormalised[leaveData.role] || leaveData.role;
 
-      await createNotificationService({
-        type: 'leave_request',
-        title: notificationTitle,
-        detail: notificationDetail,
-        lead_id: undefined,
-        from_role: 'system',
-        from_name: 'System',
-        target_roles: [normalisedRole],
-      }).catch(err => console.error("Status update notification error:", err));
+      await ensureEmployeeLeaveStatusNotification(leaveData, status);
+
+      if (status === 'Approved' || status === 'Accepted') {
+        await notifyManagersForApprovedLeave(leaveData).catch(err => console.error("Leave cascade notification error:", err));
+      }
     }
 
     res.status(200).json({

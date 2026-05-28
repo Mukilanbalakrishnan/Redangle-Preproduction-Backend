@@ -33,6 +33,7 @@ export const startEventController = async (req: Request, res: Response) => {
       from_role: req.body.role || "photographer",
       from_name: started_by,
       target_roles: ["post-production-crm", "event-coordinator"],
+      source_stage: "event",
     });
 
     return res.json({ success: true, data: result });
@@ -60,6 +61,7 @@ export const pauseEventController = async (req: Request, res: Response) => {
       from_role: req.body.role || "photographer",
       from_name: req.body.paused_by,
       target_roles: ["post-production-crm", "event-coordinator"],
+      source_stage: "event",
     });
 
     return res.json({ success: true, data: result });
@@ -93,6 +95,7 @@ export const endEventController = async (req: Request, res: Response) => {
       from_role: req.body.role || "photographer",
       from_name: ended_by,
       target_roles: ["post-production-crm", "event-coordinator"],
+      source_stage: "event",
     });
 
     return res.json({ success: true, data: result });

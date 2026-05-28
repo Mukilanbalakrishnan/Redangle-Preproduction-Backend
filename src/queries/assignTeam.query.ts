@@ -44,6 +44,7 @@ export const ensureAssignTeamColumnsQuery = async () => {
     ADD COLUMN IF NOT EXISTS event_date DATE,
     ADD COLUMN IF NOT EXISTS event_time TIME,
     ADD COLUMN IF NOT EXISTS location TEXT,
+    ADD COLUMN IF NOT EXISTS file_path TEXT,
     ADD COLUMN IF NOT EXISTS accepted_by_employees JSONB DEFAULT '[]'::jsonb,
     ADD COLUMN IF NOT EXISTS accepted_assignments JSONB DEFAULT '[]'::jsonb,
     ADD COLUMN IF NOT EXISTS shoot_locations JSONB DEFAULT '[]'::jsonb

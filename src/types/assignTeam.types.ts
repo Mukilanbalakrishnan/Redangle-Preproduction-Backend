@@ -2,6 +2,8 @@ export interface AssignTeamDTO {
 
   external_lead_id: string | number;
   assignment_phase?: 'pre_production' | 'event';
+  assigned_by_name?: string;
+  assigned_by_role?: string;
 
   photographer?: string;
   videographer?: string;

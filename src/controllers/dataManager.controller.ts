@@ -5,6 +5,13 @@ import { updatePixofficeStatusQuery } from "../queries/pixoffice.query";
 import { pool } from "../config/db";
 import { createNotificationService } from "../services/notification.service";
 
+const notificationStageFromPhase = (phase?: string) => {
+    const normalized = String(phase || '').toLowerCase();
+    if (normalized === 'event') return 'event';
+    if (normalized === 'post_production') return 'post-production';
+    return 'pre-production';
+};
+
 export const getIncomingDataController = async (req: Request, res: Response) => {
     try {
         const data = await getIncomingDataService();
@@ -147,6 +154,7 @@ export const approveMediaController = async (req: Request, res: Response) => {
                 from_role: 'data-manager',
                 from_name: 'Data Manager',
                 target_roles: [currentPhase === 'event' ? 'post-production-crm' : 'pre-production-crm'],
+                source_stage: notificationStageFromPhase(currentPhase),
             });
         } catch (e) {
             console.error('Failed to notify CRM about Data Manager approval:', e);
@@ -252,6 +260,7 @@ export const crmVerifyController = async (req: Request, res: Response) => {
                     from_role: 'post-production-crm',
                     from_name: 'Post-production CRM',
                     target_roles: ['pre-production-crm'],
+                    source_stage: 'event',
                 });
             } else if (crmVerifiedPhase === 'event') {
                 // Pre-wedding: event -> post-production (operational manager assigns editors)
@@ -274,6 +283,7 @@ export const crmVerifyController = async (req: Request, res: Response) => {
                     from_role: 'post-production-crm',
                     from_name: 'Post-production CRM',
                     target_roles: ['operational-manager'],
+                    source_stage: 'event',
                 });
             } else {
                 const { reconcileLeadPhasesService } = require('../services/phaseTracking.service');
@@ -293,6 +303,7 @@ export const crmVerifyController = async (req: Request, res: Response) => {
                 from_role: crmVerifiedPhase === 'event' ? 'post-production-crm' : 'crm',
                 from_name: crmVerifiedPhase === 'event' ? 'Post-production CRM' : 'CRM',
                 target_roles: ['data_manager'],
+                source_stage: notificationStageFromPhase(crmVerifiedPhase),
             });
         } catch (e) {
             console.error('Failed to notify data manager about CRM approval:', e);
